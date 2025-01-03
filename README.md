@@ -186,13 +186,61 @@ Em PySpark, o mais recomendado atualmente é usar DataFrames, pois oferecem melh
 - a extensão do arquivo e ipynb
 - aqui abaixo um exemplo de uso do pyspark
 ```
-# Inicie uma sessão Spark no seu notebook.
-from pyspark.sql import SparkSession
-spark = SparkSession.builder.appName("ProductDataAnalysis").config("spark.executor.cores", "2").getOrCreate()
 #%%
-# Carregue os dados do arquivo CSV que já está dentro do seu projeto
-file_path = "product+classification+and+clustering/pricerunner_aggregate.csv"
-df = spark.read.csv(file_path, header=True, inferSchema=True)
+from pyspark.sql.functions import col
+df.select([col(c).isNull().alias(c) for c in df.columns]).show()
 #%%
-df.show(5)
+# Exemplo de exclusão de linhas com valores nulos
+df_clean = df.na.drop()
+#%%
+df.printSchema()
+#%%
+# Lista de nomes de colunas conforme o esquema com espaços
+col_names = df_clean.schema.names
+
+# Renomear colunas para remover espaços iniciais
+for col_name in col_names:
+    new_col_name = col_name.strip()  # strip() remove espaços do começo e do fim
+    df_clean = df_clean.withColumnRenamed(col_name, new_col_name)
+
+# Verificando o novo esquema
+df_clean.printSchema()
+#%%
+# Exemplo de conversão de uma coluna de string para inteiro
+df_clean = df_clean.withColumn("Merchant ID", df_clean["Merchant ID"].cast("integer"))
+#%%
+# NOTA: A conversão de tipos de dados é útil quando você precisa alterar o tipo de uma coluna. 
+# No nosso DataFrame, a coluna 'Merchant ID' já é do tipo inteiro, conforme mostrado pelo esquema:
+df_clean.printSchema()
+
+# Portanto, a conversão para inteiro não é necessária neste caso. Se fosse uma coluna do tipo string
+# que contém apenas números, a conversão seria realizada da seguinte maneira:
+# df_clean = df_clean.withColumn("Merchant ID", df_clean["Merchant ID"].cast("integer"))
+#%% md
+## Análise Exploratória de Dados
+#%%
+#Calculando a Distribuição de Produtos por Categoria
+from pyspark.sql.functions import count
+
+# Agrupando por categoria e contando os produtos
+categoria_distribuicao = df_clean.groupBy("Category Label").agg(count("Product ID").alias("Count")).orderBy("Count", ascending=False)
+
+# Visualizando o resultado
+categoria_distribuicao.show()
+#%%
+# Identificando os Comerciantes com Mais Ofertas
+comerciantes_top = df_clean.groupBy("Merchant ID").agg(count("Product ID").alias("Total Products")).orderBy("Total Products", ascending=False)
+
+comerciantes_top.show()
+#%%
+# Importando a função necessária
+from pyspark.sql.functions import countDistinct
+
+# Contando a quantidade de títulos de produtos únicos em cada categoria
+diversidade_categoria = df_clean.groupBy("Category Label").agg(countDistinct("Product Title").alias("Unique Product Titles"))
+
+# Exibindo o resultado
+diversidade_categoria.show()
+#%%
+
 ```
