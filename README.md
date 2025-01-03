@@ -182,3 +182,17 @@ Datasets: quando precisa de tipagem forte em Scala/Java
 
 Em PySpark, o mais recomendado atualmente é usar DataFrames, pois oferecem melhor performance e uma API mais amigável.
 ```
+## Pontos importantes
+- a extensão do arquivo e ipynb
+- aqui abaixo um exemplo de uso do pyspark
+```
+# Inicie uma sessão Spark no seu notebook.
+from pyspark.sql import SparkSession
+spark = SparkSession.builder.appName("ProductDataAnalysis").config("spark.executor.cores", "2").getOrCreate()
+#%%
+# Carregue os dados do arquivo CSV que já está dentro do seu projeto
+file_path = "product+classification+and+clustering/pricerunner_aggregate.csv"
+df = spark.read.csv(file_path, header=True, inferSchema=True)
+#%%
+df.show(5)
+```
