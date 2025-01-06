@@ -244,3 +244,150 @@ diversidade_categoria.show()
 #%%
 
 ```
+
+## DAG
+
+````
+O conceito de Directed Acyclic Graph (DAG) no contexto do Apache Spark de forma clara.
+Um DAG (Grafo Acíclico Direcionado) no Spark é uma representação do fluxo de processamento dos dados, onde:
+
+"Directed" (Direcionado) significa que o fluxo de dados tem uma direção específica, sempre movendo-se para frente
+"Acyclic" (Acíclico) significa que não existem ciclos/loops no fluxo - os dados não voltam para um estágio anterior
+"Graph" (Grafo) é a estrutura que representa as transformações como nós conectados por arestas
+
+No Spark, quando você escreve seu código usando transformações (como map, filter, groupBy), o Spark não executa imediatamente. Em vez disso, ele:
+
+Cria um plano de execução otimizado representado como um DAG
+Divide o DAG em estágios (stages)
+Organiza as transformações em uma sequência lógica
+Executa apenas quando uma ação (como collect(), count(), save()) é chamada
+
+Por exemplo, considere este código Spark:
+
+# Criando um RDD
+rdd = spark.sparkContext.parallelize([1, 2, 3, 4, 5])
+
+# Aplicando transformações
+filtered = rdd.filter(lambda x: x > 2)
+doubled = filtered.map(lambda x: x * 2)
+result = doubled.reduce(lambda x, y: x + y)
+
+O DAG resultante seria algo como:
+Input Data → Filter(>2) → Map(*2) → Reduce(+)
+Cada seta (→) representa a direção do fluxo de dados, e cada operação é um nó no grafo. O Spark usa esta representação para:
+
+Otimizar o processamento (combinando operações quando possível)
+Determinar quais operações podem ser executadas em paralelo
+Planejar a recuperação de falhas (sabendo quais etapas precisam ser refeitas)
+Minimizar o shuffle de dados entre os nós do cluster
+
+Você pode visualizar o DAG de suas operações usando a interface web do Spark (Spark UI), que mostra graficamente como suas transformações estão sendo organizadas e executadas.
+Esta organização em DAG é uma das razões pela qual o Spark é tão eficiente em processar grandes volumes de dados, pois permite otimização automática do fluxo de 
+````
+
+## Shuffle
+````
+O conceito de shuffle no Apache Spark, que é um processo crucial para o desempenho das aplicações.
+O shuffle é o processo de redistribuição dos dados entre as partições, geralmente ocorrendo entre os estágios (stages) de um job Spark. É um processo custoso pois envolve:
+
+Escrita em disco
+Transferência pela rede
+Reorganização dos dados
+
+Principais situações que causam shuffle:
+
+Operações de Agregação
+
+pythonCopy# Exemplo de groupBy que causa shuffle
+df.groupBy("departamento").count()
+
+Joins
+
+pythonCopy# Join entre DataFrames causa shuffle
+funcionarios.join(departamentos, "dept_id")
+
+Reparticionamento
+
+pythonCopy# Reparticionamento explícito
+df.repartition(10)
+
+Operações de Ordenação
+
+pythonCopy# Sort causa shuffle
+df.sort("data")
+Para minimizar o impacto do shuffle, algumas estratégias importantes:
+
+Broadcast Join
+
+pythonCopy# Quando uma tabela é pequena, use broadcast
+from pyspark.sql.functions import broadcast
+grande.join(broadcast(pequena), "id")
+
+Particionamento Inteligente
+
+pythonCopy# Particionando por chave de join antes de operações
+df1 = df1.repartition("join_key")
+df2 = df2.repartition("join_key")
+df1.join(df2, "join_key")
+
+Redução de dados antes do shuffle
+
+pythonCopy# Filtre e selecione apenas colunas necessárias
+df.select("col1", "col2")
+  .filter("col1 > 0")
+  .groupBy("col1")
+  .count()
+
+Cache Estratégico
+
+pythonCopy# Cache após operações de shuffle frequentemente usadas
+df_agregado = df.groupBy("dept").count()
+df_agregado.cache()
+Impactos do Shuffle:
+
+Memória:
+
+Requer espaço em disco para shuffle write
+Precisa de memória para buffer de leitura/escrita
+
+
+Rede:
+
+Transferência de dados entre executores
+Pode causar congestionamento de rede
+
+
+Computação:
+
+Serialização/Deserialização dos dados
+Ordenação e agregação
+
+
+
+Para monitorar shuffles:
+
+Spark UI:
+
+Mostra quantidade de dados shuffled
+Tempo gasto em operações de shuffle
+
+
+Métricas importantes:
+
+Shuffle Write Size
+Shuffle Read Size
+Spill Size (dados escritos em disco)
+
+
+
+Dicas para otimização:
+
+Reduza o volume de dados antes do shuffle
+Use o número apropriado de partições
+Aproveite broadcast quando possível
+Monitore e ajuste conforme necessário
+Considere particionamento físico dos dados
+Use cache estrategicamente após shuffles
+
+O shuffle é inevitável em muitos casos, mas entender quando ele ocorre e como otimizá-lo é fundamental para o desempenho das aplicações Spark.
+````
